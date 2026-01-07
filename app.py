@@ -23,9 +23,39 @@ client = OpenAI(
     base_url="OPENAI_ENDPOINTS" 
 )
 
+# グローバル変数の定義
+DATABRICKS_HOST = '＊＊＊＊＊＊＊＊＊'
+DATABRICKS_TOKEN = '＊＊＊＊＊＊＊＊＊'
+
+# 環境変数から他の認証関連の変数を削除
+if 'DATABRICKS_CLIENT_ID' in os.environ:
+    del os.environ['DATABRICKS_CLIENT_ID']
+if 'DATABRICKS_CLIENT_SECRET' in os.environ:
+    del os.environ['DATABRICKS_CLIENT_SECRET']
+
 # 環境変数をセット
 os.environ['DATABRICKS'] = 'DATABRICKS_ENVIRON'
 os.environ['DATABRICKS'] = 'DATABRICKS_ENVIRON'
+
+def get_image_from_volumes(image_path):
+    """Databricks Volumesから画像を取得する関数"""
+    try:
+        # WorkspaceClientの初期化
+        w = WorkspaceClient()
+        
+        # Volumesパスを処理
+        dbfs_path = image_path.replace('/Volumes/', '/dbfs/Volumes/')
+        
+        # 画像データの読み込み
+        with open(dbfs_path, 'rb') as f:
+            image_data = f.read()
+        
+        # 画像データをPIL Imageオブジェクトとして返す
+        return Image.open(io.BytesIO(image_data))
+            
+    except Exception as e:
+        print(f"画像の取得中にエラーが発生しました: {e}")
+        return None
 
 def encode_image(image_path):
     """画像をBase64エンコードする関数"""
@@ -46,7 +76,7 @@ def find_similar_coordinations(coordination_text, max_retries=5, wait_time=10):
 
             results = vs_index.similarity_search(
                 query_text=coordination_text,
-                columns=["ID", "Detail", "Category", "Color", "Path"],
+                columns=["ID", "Detail", "Category", "Color", "Pass"],
                 num_results=1,
                 filters={}
             )
@@ -110,48 +140,22 @@ def diagnose_body_type(image):
     
     base64_image = encode_image(image)
     
-    query = """
-    あなたはファッションコンサルタントとして、ユーザーの骨格診断を正確に行います。
-    以下の詳細な基準に従い、診断を実施してください。
+    query = """あなたはファッションコンサルタントであり、骨格診断を正確に行う必要があります。以下のステップに従って診断してください：
 
-    ### 診断手順
+1. 画像を解析して、以下の3つのタイプのいずれに該当するか確認してください。
+    - ストレートタイプ: 上半身に厚みがあり、直線的なライン。
+    - ナチュラルタイプ: 骨の存在感があり、フレームがしっかりしている。
+    - ウェーブタイプ: ソフトな体型で、曲線的なライン。
 
-    1. **画像を解析し、骨格の特徴を評価してください。**
-    - **骨のフレーム:** （しっかりした骨格か、華奢な骨格か）
-    - **筋肉の付き方:** （ハリがあるか、ソフトか）
-    - **脂肪の付き方:** （均等か、一部に偏りがあるか）
-    - **体の重心:** （上半身寄りか、下半身寄りか）
+2. 判断は以下の基準に基づいてください（例: 骨の形状、脂肪分布、体のライン）。
+    - 特徴を詳細に記述し、タイプを選定してください。
 
-    2. **以下の12分類に基づいて診断してください。**
-    - **骨格ストレート:** （ザ・ストレート / スレンダー・ストレート / ソフト・ストレート / ラフ・ストレート）
-    - **骨格ウェーブ:** （ザ・ウェーブ / メリハリ・ウェーブ / リッチ・ウェーブ / ラフ・ウェーブ）
-    - **骨格ナチュラル:** （ザ・ナチュラル / メリハリ・ナチュラル / リッチ・ナチュラル / ラフ・ナチュラル）
+3. 一貫性を保つために、これらの判断基準に厳密に従ってください。
 
-    3. **特徴を詳細に記述し、診断結果を以下の形式で返してください。**
-    - **タイプ:** [診断された骨格タイプ]
-    - **特徴:** [3〜4行の詳細な特徴説明]
-    - **おすすめのスタイル:** [その骨格タイプに最適な服装やコーディネートのヒント]
-    - **避けるべきスタイル:** [似合いにくい服の特徴とその理由]
-
-    ### 診断基準の詳細
-
-    #### **ストレートタイプ:**
-    - 体に厚みがあり、筋肉のハリが強い。上重心で立体的なシルエット。
-    - **似合う服:** 直線的でシンプルなデザイン、ハリのある素材。
-    - **避ける服:** フリルや装飾が多すぎるデザイン、ゆるすぎる服。
-
-    #### **ウェーブタイプ:**
-    - 華奢で柔らかい質感、脂肪がつきやすく曲線的なライン。下重心。
-    - **似合う服:** 軽やかでソフトな素材、フィット＆フレアのシルエット。
-    - **避ける服:** ボクシーなシルエット、硬い素材。
-
-    #### **ナチュラルタイプ:**
-    - 骨の存在感があり、フレームがしっかりしている。重心はバランスが良い。
-    - **似合う服:** ラフで無造作なデザイン、オーバーサイズの服。
-    - **避ける服:** タイトすぎる服、光沢のある繊細な素材。
-
-    一貫性を保つため、上記の判断基準を厳密に適用してください。
-    """
+診断結果は次の形式で返してください：
+タイプ: [診断されたタイプ名]
+特徴: [3〜4行の簡潔な特徴説明]
+おすすめのスタイル: [そのタイプに最適な服装や着こなしのヒント]"""
     
     response = client.chat.completions.create(
         model="aoai-gpt-4o",
@@ -175,57 +179,23 @@ def diagnose_personal_color(image):
     
     base64_image = encode_image(image)
     
-    query = """
-    あなたは専門的なパーソナルカラー診断を行うAIアシスタントです。以下の手順に従い、正確な診断を実施してください。
+    query = """あなたは専門的なパーソナルカラー診断を行う必要があります。以下の手順に従い診断を実施してください：
 
-    ## 診断手順
-    1. 入力された画像を解析し、以下の4つのパーソナルカラータイプのいずれかを選定してください。
-        - **スプリング（イエベ春）**: 明るく鮮やかな暖色。黄味のある肌。
-        - **サマー（ブルベ夏）**: 柔らかく優しい寒色。青味のある肌。
-        - **オータム（イエベ秋）**: 深みのある暖色。黄味がかった肌。
-        - **ウィンター（ブルベ冬）**: 鮮やかで濃い寒色。青白い肌。
+1. 画像を解析し、以下の4つのタイプのいずれかを選定してください：
+    - スプリング: 明るい暖色、黄味のある肌。
+    - サマー: 柔らかい寒色、青味のある肌。
+    - オータム: 深い暖色、黄味がかった肌。
+    - ウィンター: 鮮やかな寒色、青白い肌。
 
-    2. 以下の特徴をもとに判断してください。
-        - **肌の色**: 黄味が強いか、青味が強いかを分析。
-        - **髪の色**: 黒髪、茶髪、赤み、黄みの有無を考慮。
-        - **目の色**: 明るさ、透明感、深みの有無を観察。
+2. 判断基準として、肌の色、髪、目の色の特徴を観察してください。
+3. 必ず基準に基づいて診断し、ランダム性を排除してください。
 
-    3. 診断は必ず上記の基準に基づいて行い、ランダムな判断は避けてください。
-
-    ## 診断結果のフォーマット
-    診断結果は以下の形式で出力してください。
-
-    \"\"\"
-    タイプ: [診断されたシーズンタイプ]
-    特徴: [肌、髪、目の色の特徴]
-    似合う色: [そのタイプに最適な色の例]
-    避けるべき色: [そのタイプに合わない色の例]
-    \"\"\"
-
-    ## 各タイプの詳細
-
-    ### スプリング（イエベ春）
-    - **特徴**: 明るく鮮やかな暖色が似合う。肌は黄みがあり、血色感がある。
-    - **似合う色**: コーラル、ピーチピンク、ビタミンオレンジ、ネープルスイエロー、レタスグリーン、キャンディーブルー
-    - **避けるべき色**: スモーキーな色、暗くくすんだ色
-
-    ### サマー（ブルベ夏）
-    - **特徴**: 柔らかく優しい寒色が似合う。肌は青みがあり、透明感がある。
-    - **似合う色**: ローズピンク、レモンイエロー、セージグリーン、サックスブルー、ラベンダー
-    - **避けるべき色**: 鮮やかすぎる色、黄みの強い色
-
-    ### オータム（イエベ秋）
-    - **特徴**: 深みのある暖色が似合う。肌は黄みが強く、落ち着いた印象。
-    - **似合う色**: サーモン、アプリコット、マスタード、テラコッタ、カーキ、ターコイズブルー
-    - **避けるべき色**: パステルカラー、冷たい青みの強い色
-
-    ### ウィンター（ブルベ冬）
-    - **特徴**: 鮮やかでコントラストの強い寒色が似合う。肌は青白く、クールな印象。
-    - **似合う色**: バーガンディ、フューシャピンク、レモンイエロー、ビリヤードグリーン、ロイヤルブルー、ロイヤルパープル
-    - **避けるべき色**: 黄みの強い色、くすんだ色
-
-    必ずこのルールに従い、適切な診断を行ってください。
-    """
+結果は次の形式で返してください：
+タイプ: [診断されたシーズンタイプ名]
+特徴: [肌、髪、目の色の特徴]
+似合う色: [そのタイプに最適な色の例3〜4色]
+避けるべき色: [そのタイプに合わない色の例3〜4色]
+"""
     response = client.chat.completions.create(
         model="aoai-gpt-4o",
         messages=[
@@ -402,21 +372,14 @@ def main_app():
         coordination_output = gr.Textbox(label="コーディネート提案")
 
         # 類似コーディネーション表示用のギャラリー
-        similar_images = [
-            "stylist_ai/001.jpg.avif",
-            "stylist_ai/002.jpg.avif"
-        ]
         similar_coordinations_gallery = gr.Gallery(
-            #value = process_coordinations,
+            #value = similar_images,
             label="おすすめのコーディネーション", 
             show_label=True,
             elem_id="coordination-gallery",
             columns=2,
             object_fit="contain",
-            height="auto",
-            allow_preview=True,
-            type="filepath",
-            format="PNG"      # フォーマットを明示的に指定
+            height="auto"
         )
         
         # 診断ボタンのイベントハンドラ
@@ -430,13 +393,12 @@ def main_app():
             coordination_text, similar_coordinations = generate_and_find_coordinations(body_result, color_result)
             
             # 画像パスのリストを作成
-            image_paths = similar_coordinations
-
-            print(image_paths)
-
+            image_paths = []
+            for doc in similar_coordinations:
+                if 'image_path' in doc:
+                    image_paths.append(doc['image_path'])
             
             return coordination_text, image_paths
-            
             
         
         # イベントハンドラの定義
@@ -458,4 +420,5 @@ def main_app():
 # アプリケーションの起動
 if __name__ == "__main__":
     demo = main_app()
+    demo.launch()
     demo.launch()
