@@ -2,9 +2,35 @@
 骨格診断とパーソナルカラー診断を行い、それらに基づいて最適なファッションコーディネートを提案します。ユーザーの骨格やパーソナルカラーに合わせ、具体的なスタイルを提案することで、新しい服選びをサポートします。 
 
 ## デモ
-
-![デモ]([/Users/oosakiharuna/Documents/Databricks_project/パネル修正/実行例１.png](https://github.com/user-attachments/assets/62071f5a-6b3e-43be-b7e6-c83b7f46c9af"))
-![デモ]([/Users/oosakiharuna/Documents/Databricks_project/パネル修正/実行例２.png](https://github.com/user-attachments/assets/62071f5a-6b3e-43be-b7e6-c83b7f46c9af"))
 <img width="1470" height="840" alt="Image" src="https://github.com/user-attachments/assets/62071f5a-6b3e-43be-b7e6-c83b7f46c9af" />
 
 <img width="1470" height="838" alt="Image" src="https://github.com/user-attachments/assets/99da5064-3015-4d7f-b1e6-a7dee3a9242c" />
+
+
+## ✨ 特徴
+🤖 生成AIによるスタイリング提案
+画像をアップロードするだけで、生成AIが骨格タイプやパーソナルカラーを分析し、ユーザーに合った服装を提案します。
+👗 骨格診断・パーソナルカラー診断
+入力画像から複数の観点で特徴を分析し、スタイリングの根拠となる診断結果を提示します。
+📷 Webカメラを利用したリアルタイム診断
+Webカメラを使用してその場で画像を取得し、アップロードの手間なく診断を行える仕組みを実装しました。
+💡 わかりやすいUI/UX設計
+専門用語には解説を付け、初めて利用するユーザーでも迷わず使える画面設計を意識しました。
+
+## 🛠️ 技術スタック
+
+- **フロントエンド**:Python, Gradio
+- **バックエンド**:Python
+- **その他**:OpenAI API（GPT-4o）, Databricks Vector Search
+- **画像処理**:Pillow（PIL）, Base64
+
+
+### 前提条件
+
+- Python 3.9以上
+- Gradio 
+- OpenAI APIキーおよびエンドポイント
+- Databricks環境
+- Vector Search エンドポイント
+- コーディネート画像データ  app.pyと同一ディレクトリ配下に配置、もしくはクラウドに配置
+　＊今回使用した画像は制作発表用に外部から収集したもののため、実行時は利用者自身で画像データを用意する必要があります
